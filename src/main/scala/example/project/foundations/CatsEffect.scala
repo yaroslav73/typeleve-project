@@ -11,6 +11,19 @@ import scala.io.Source
 import java.io.PrintWriter
 import java.io.FileWriter
 import java.io.File
+import cats.MonadError
+import cats.effect.kernel.MonadCancel
+import cats.effect.kernel.Fiber
+import cats.effect.kernel.GenSpawn
+import cats.effect.kernel.Spawn
+import cats.effect.kernel.Ref
+import cats.effect.kernel.Temporal
+import cats.effect.kernel.Deferred
+import cats.effect.kernel.Concurrent
+import scala.concurrent.duration.FiniteDuration
+import cats.Defer
+import cats.effect.kernel.Sync
+import scala.concurrent.ExecutionContext
 
 object CatsEffect extends IOApp.Simple:
   // Describing computations as values
@@ -107,5 +120,49 @@ object CatsEffect extends IOApp.Simple:
   val copyFileEffect = compositeResource.use { case (source, destination) =>
     IO(source.getLines.foreach(destination.println))
   }
+
+  // Abstract kinds of computations
+
+  // MonadCancel - cancellable computations
+  trait MonadCancelExample[F[_], E] extends MonadError[F, E]:
+    trait CancellationFlatResetter:
+      def apply[A](fa: F[A]): F[A] // With the cancellation flag reset
+
+    def canceled: F[Unit]
+    def uncancelable[A](poll: CancellationFlatResetter => F[A]): F[A]
+
+  // MonadCancel for IO
+  val monadCancel: MonadCancel[IO, Throwable] = MonadCancel[IO]
+  val uncancelableIO = monadCancel.uncancelable(_ => IO(73)) // The same as IO.uncancelable(...)
+
+  // Spawn - ability to create fibers
+  trait GenSpawnExample[F[_], E] extends MonadCancel[F, E]:
+    def start[A](fa: F[A]): F[Fiber[F, E, A]] // Craetes a fiber
+    // ...
+    // never, cede, racePair
+
+  trait SpawnExample[F[_], E] extends GenSpawn[F, Throwable]
+
+  val spawnIO = Spawn[IO]
+  val fiber   = spawnIO.start(delayedPrint) // Creates a fiber, the same as delayedPrint.start
+
+  // Concurrent - concurrency primitives (atomic references + promises)
+  trait ConcurrentExample[F[_]] extends Spawn[F]:
+    def ref[A](a: A): F[Ref[F, A]]
+    def deferred[A]: F[Deferred[F, A]]
+
+  // Temporal - ability to suspend computations for a given time
+  trait TemporalExample[F[_]] extends Concurrent[F]:
+    def sleep(time: FiniteDuration): F[Unit]
+
+  // Sync - ability to suspend synchronous arbitrary expressions in an Effect
+  trait SyncExample[F[_]] extends MonadCancel[F, Throwable] with Defer[F]:
+    def delay[A](expression: => A): F[A]
+    def blocking[A](expression: => A): F[A] // Runs on a dedicated blocking thread pool
+
+  // Async - ability to suspend asynchronous computations (i.e. on other thread pools) into an Effect managed by CE
+  trait AsyncExample[F[_]] extends Sync[F] with Temporal[F]:
+    def executionContext: F[ExecutionContext]
+    def async[A](callback: (Either[Throwable, A] => Unit) => F[Option[F[Unit]]]): F[A]
 
   def run: IO[Unit] = copyFileEffect
