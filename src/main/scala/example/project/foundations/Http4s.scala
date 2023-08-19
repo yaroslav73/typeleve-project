@@ -2,11 +2,14 @@ package example.project.foundations
 
 import cats.effect.IOApp
 import cats.effect.IO
+import io.circe.generic.auto.*
+import io.circe.syntax.*
 import java.util.UUID
 import org.http4s.dsl.impl.QueryParamDecoderMatcher
 import org.http4s.dsl.impl.OptionalValidatingQueryParamDecoderMatcher
 import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
+import org.http4s.circe.*
 import cats.Applicative
 import cats.Monad
 import org.http4s.ember.server.EmberServerBuilder
@@ -16,6 +19,12 @@ object Http4s extends IOApp.Simple:
   type Student = String
 
   final case class Instructor(firstName: String, lastName: String)
+  object Instructor:
+    // TODO: Do not safe!
+    def fromString(fullName: String): Instructor =
+      val Array(firstName, lastName) = fullName.split(" ")
+      Instructor(firstName, lastName)
+
   final case class Course(id: String, title: String, year: Int, students: List[Student], instructor: Instructor)
 
   object CourseRepository:
@@ -46,9 +55,28 @@ object Http4s extends IOApp.Simple:
     val dsl = Http4sDsl[F]
     import dsl.*
 
-    HttpRoutes.of[F] { case GET -> Root / "courses" :? InstructorQueryParamMatcher(instructor) =>
-      Ok()
+    HttpRoutes.of[F] {
+      case GET -> Root / "courses" :? InstructorQueryParamMatcher(instructor) +& YearQueryParamMatcher(year) =>
+        val courses = CourseRepository
+          .findCourseByInstructor(Instructor.fromString(instructor))
+        year.fold(Ok(courses.asJson)) { validYear =>
+          validYear.fold(
+            _ => BadRequest("Parameter 'year' is ivalid, use year in format YYYY".asJson),
+            y => Ok(courses.filter(_.year == y).asJson)
+          )
+        }
+      case GET -> Root / "courses" / UUIDVar(courseId) / "students" =>
+        CourseRepository
+          .findCourseById(courseId)
+          .fold {
+            NotFound(s"Course $courseId not found")
+          } { course =>
+            Ok(course.students.asJson)
+          }
     }
+
+  // TODO: Add endpoint health, that response "All going great!"
+  // TODO: Combine with courseRoutes <+> 
 
   override def run: IO[Unit] =
     EmberServerBuilder
