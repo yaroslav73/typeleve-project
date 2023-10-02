@@ -1,10 +1,10 @@
 package example.project.jobsboard
 
+import example.project.jobsboard.config.EmberConfig
+import example.project.jobsboard.http.HttpApi
 import cats.effect.{ IO, IOApp }
-import example.project.jobsboard.http.routes.HealthRoutes
 import org.http4s.ember.server.EmberServerBuilder
 import pureconfig.ConfigSource
-import example.project.jobsboard.config.EmberConfig
 import pureconfig.error.ConfigReaderException
 
 object Application extends IOApp.Simple:
@@ -20,6 +20,6 @@ object Application extends IOApp.Simple:
           .default[IO]
           .withHost(config.host)
           .withPort(config.port)
-          .withHttpApp(HealthRoutes[IO].routes.orNotFound)
+          .withHttpApp(HttpApi[IO].routes.orNotFound)
           .build
           .use(s => IO.println(s"Server started at: ${s.address}") *> IO.never)
