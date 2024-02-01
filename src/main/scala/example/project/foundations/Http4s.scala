@@ -82,12 +82,13 @@ object Http4s extends IOApp.Simple:
     val dsl = Http4sDsl[F]
     import dsl.*
 
-    HttpRoutes.of[F] { case GET -> Root / "heatlh" =>
+    HttpRoutes.of[F] { case GET -> Root / "health" =>
       Ok("All going great!".asJson)
     }
 
+  def endpoints[F[_]: Monad]: HttpRoutes[F] = courseRoutes[F] <+> healtRoutes[F]
+
   override def run: IO[Unit] =
-    def endpoints[F[_]: Monad]: HttpRoutes[F] = courseRoutes[F] <+> healtRoutes[F]
     EmberServerBuilder
       .default[IO]
       .withHttpApp(endpoints[IO].orNotFound)
