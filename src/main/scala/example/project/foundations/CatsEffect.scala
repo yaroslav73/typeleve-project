@@ -55,8 +55,9 @@ object CatsEffect extends IOApp.Simple:
   // Raise / handle (catch) errors
   val successIO: IO[Int] = IO(13)
   val failureIO: IO[Int] = IO.raiseError(new RuntimeException("a proper failure"))
-  val handledIO: IO[Int] = failureIO.handleErrorWith { case e: RuntimeException =>
-    IO(println(s"Handle error with message: ${e.getMessage}")) *> IO(0)
+  val handledIO: IO[Int] = failureIO.handleErrorWith {
+    case e: RuntimeException =>
+      IO(println(s"Handle error with message: ${e.getMessage}")) *> IO(0)
   }
 
   // Fibers - "lightweight threads"
@@ -117,8 +118,9 @@ object CatsEffect extends IOApp.Simple:
       destination <- copiedFileResource
     } yield (source, destination)
 
-  val copyFileEffect = compositeResource.use { case (source, destination) =>
-    IO(source.getLines.foreach(destination.println))
+  val copyFileEffect = compositeResource.use {
+    case (source, destination) =>
+      IO(source.getLines.foreach(destination.println))
   }
 
   // Abstract kinds of computations

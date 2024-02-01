@@ -82,8 +82,9 @@ object Http4s extends IOApp.Simple:
     val dsl = Http4sDsl[F]
     import dsl.*
 
-    HttpRoutes.of[F] { case GET -> Root / "health" =>
-      Ok("All going great!".asJson)
+    HttpRoutes.of[F] {
+      case GET -> Root / "health" =>
+        Ok("All going great!".asJson)
     }
 
   def endpoints[F[_]: Monad]: HttpRoutes[F] = courseRoutes[F] <+> healtRoutes[F]

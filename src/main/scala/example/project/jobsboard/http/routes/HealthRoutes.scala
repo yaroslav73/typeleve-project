@@ -7,8 +7,9 @@ import org.http4s.server.Router
 
 class HealthRoutes[F[_]: Monad] private extends Http4sDsl[F]:
   private val healthRoute: HttpRoutes[F] =
-    HttpRoutes.of[F] { case GET -> Root / "health" =>
-      Ok("All going great!")
+    HttpRoutes.of[F] {
+      case GET -> Root / "health" =>
+        Ok("All going great!")
     }
 
   val routes: HttpRoutes[F] = Router("/private" -> healthRoute)
