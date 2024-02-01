@@ -2,6 +2,7 @@ package example.project.foundations
 
 import cats.effect.IOApp
 import cats.effect.IO
+import cats.syntax.all.toSemigroupKOps
 import io.circe.generic.auto.*
 import io.circe.syntax.*
 import java.util.UUID
@@ -20,10 +21,10 @@ object Http4s extends IOApp.Simple:
 
   final case class Instructor(firstName: String, lastName: String)
   object Instructor:
-    // TODO: Do not safe!
-    def fromString(fullName: String): Instructor =
-      val Array(firstName, lastName) = fullName.split(" ")
-      Instructor(firstName, lastName)
+    def fromString(fullName: String): Option[Instructor] =
+      fullName.split(" ") match
+        case Array(firstName, lastName) => Some(Instructor(firstName, lastName))
+        case _                          => None
 
   final case class Course(id: String, title: String, year: Int, students: List[Student], instructor: Instructor)
 
@@ -57,8 +58,10 @@ object Http4s extends IOApp.Simple:
 
     HttpRoutes.of[F] {
       case GET -> Root / "courses" :? InstructorQueryParamMatcher(instructor) +& YearQueryParamMatcher(year) =>
-        val courses = CourseRepository
-          .findCourseByInstructor(Instructor.fromString(instructor))
+        val courses =
+          Instructor
+            .fromString(instructor)
+            .fold(List.empty[Course])(instructor => CourseRepository.findCourseByInstructor(instructor))
         year.fold(Ok(courses.asJson)) { validYear =>
           validYear.fold(
             _ => BadRequest("Parameter 'year' is ivalid, use year in format YYYY".asJson),
@@ -75,12 +78,18 @@ object Http4s extends IOApp.Simple:
           }
     }
 
-  // TODO: Add endpoint health, that response "All going great!"
-  // TODO: Combine with courseRoutes <+> 
+  def healtRoutes[F[_]: Monad]: HttpRoutes[F] =
+    val dsl = Http4sDsl[F]
+    import dsl.*
+
+    HttpRoutes.of[F] { case GET -> Root / "heatlh" =>
+      Ok("All going great!".asJson)
+    }
 
   override def run: IO[Unit] =
+    def endpoints[F[_]: Monad]: HttpRoutes[F] = courseRoutes[F] <+> healtRoutes[F]
     EmberServerBuilder
       .default[IO]
-      .withHttpApp(courseRoutes[IO].orNotFound)
+      .withHttpApp(endpoints[IO].orNotFound)
       .build
       .use(s => IO.println(s"Searver started at: ${s.address}") *> IO.never)
