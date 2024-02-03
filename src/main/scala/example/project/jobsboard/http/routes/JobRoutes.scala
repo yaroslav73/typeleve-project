@@ -21,8 +21,9 @@ import example.project.jobsboard.domain.Job.JobInfo
 import scala.collection.mutable
 import java.time.Instant
 import cats.Applicative
+import org.typelevel.log4cats.Logger
 
-class JobRoutes[F[_]: Concurrent] private extends Http4sDsl[F]:
+class JobRoutes[F[_]: Concurrent: Logger] private extends Http4sDsl[F]:
   // Simulate DB:
   private val jobs = mutable.Map.empty[UUID, Job]
 
@@ -96,4 +97,4 @@ class JobRoutes[F[_]: Concurrent] private extends Http4sDsl[F]:
   )
 
 object JobRoutes:
-  def apply[F[_]: Concurrent]: JobRoutes[F] = new JobRoutes[F]
+  def apply[F[_]: Concurrent: Logger]: JobRoutes[F] = new JobRoutes[F]

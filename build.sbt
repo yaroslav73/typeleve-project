@@ -1,7 +1,7 @@
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := "0.1.0"
 
 lazy val orgName       = "example.project"
-lazy val scala3Version = "3.3.0"
+lazy val scala3Version = "3.3.1"
 
 lazy val circeVersion               = "0.14.0"
 lazy val catsEffectVersion          = "3.3.14"
