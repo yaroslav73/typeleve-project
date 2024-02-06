@@ -22,7 +22,9 @@ object Job:
     externalUrl: String,
     location: String,
     remote: Boolean,
-    salary: Option[SalaryRange],
+    salary: Option[Int],
+    // TODO: Reaplace with SalaryRange
+    // salary: Option[SalaryRange],
     currency: Option[String],
     country: Option[String],
     tags: Option[List[String]],
@@ -32,6 +34,23 @@ object Job:
   )
 
   object JobInfo:
-    def empty: JobInfo = JobInfo("", "", "", "", "", false, None, None, None, None, None, None, None)
+    def Empty: JobInfo = JobInfo("", "", "", "", "", false, None, None, None, None, None, None, None)
+
+    val Test: JobInfo =
+      JobInfo(
+        company     = "Test Company",
+        title       = "Software Engineer",
+        description = "An awesome job!",
+        externalUrl = "https://test-company.com/jobs/1",
+        location    = "Kyiv, Ukraine",
+        remote      = true,
+        salary      = None,
+        currency    = None,
+        country     = None,
+        tags        = None,
+        image       = None,
+        seniority   = None,
+        other       = None,
+      )
 
   final case class SalaryRange(min: BigDecimal, main: BigDecimal)
