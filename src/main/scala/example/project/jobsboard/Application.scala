@@ -1,7 +1,7 @@
 package example.project.jobsboard
 
 import example.project.jobsboard.config.EmberConfig
-import example.project.jobsboard.http.HttpApi
+import example.project.jobsboard.modules.{ Core, HttpApi }
 import cats.effect.{ IO, IOApp }
 import org.http4s.ember.server.EmberServerBuilder
 import pureconfig.ConfigSource
@@ -20,10 +20,16 @@ object Application extends IOApp.Simple:
       case Left(errors) =>
         IO.raiseError(ConfigReaderException[String](errors))
       case Right(config) =>
-        EmberServerBuilder
-          .default[IO]
-          .withHost(config.host)
-          .withPort(config.port)
-          .withHttpApp(HttpApi[IO].routes.orNotFound)
-          .build
-          .use(s => IO.println(s"Server started at: ${s.address}") *> IO.never)
+        val app =
+          for
+            core    <- Core[IO]
+            httpApi <- HttpApi[IO](core)
+            server <- EmberServerBuilder
+              .default[IO]
+              .withHost(config.host)
+              .withPort(config.port)
+              .withHttpApp(httpApi.routes.orNotFound)
+              .build
+          yield server
+
+        app.use(s => IO.println(s"Server started at: ${s.address}") *> IO.never)
