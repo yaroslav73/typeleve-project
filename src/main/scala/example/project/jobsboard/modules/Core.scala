@@ -1,28 +1,16 @@
 package example.project.jobsboard.modules
 
-import example.project.jobsboard.core.Jobs
-import cats.effect.kernel.Resource
-import doobie.hikari.HikariTransactor
-import doobie.util.ExecutionContexts
-import example.project.jobsboard.core.Jobs.LiveJobs
+import cats.syntax.all.*
 import cats.effect.kernel.Async
+import cats.effect.kernel.Resource
+import doobie.util.transactor.Transactor
+import example.project.jobsboard.core.Jobs
+import example.project.jobsboard.core.Jobs.LiveJobs
 
 final case class Core[F[_]] private (val jobs: Jobs[F])
 
 object Core:
-  def postrgresResource[F[_]: Async]: Resource[F, HikariTransactor[F]] =
-    for
-      ec <- ExecutionContexts.fixedThreadPool[F](32)
-      xa <- HikariTransactor.newHikariTransactor[F](
-        "org.postgresql.Driver",
-        "jdbc:postgresql:board",
-        "docker",
-        "docker",
-        ec,
-      )
-    yield xa
-
-  def apply[F[_]: Async]: Resource[F, Core[F]] =
-    postrgresResource[F]
-      .evalMap(postgres => LiveJobs(postgres))
+  def apply[F[_]: Async](xa: Transactor[F]): Resource[F, Core[F]] =
+    Resource
+      .eval(LiveJobs(xa))
       .map(jobs => new Core(jobs))
