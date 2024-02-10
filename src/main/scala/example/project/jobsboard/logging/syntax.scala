@@ -3,6 +3,7 @@ package example.project.jobsboard.logging
 import cats.MonadError
 import cats.syntax.applicative.catsSyntaxApplicativeId
 import cats.syntax.monadError.catsSyntaxMonadError
+
 import org.typelevel.log4cats.Logger
 
 extension [F[_], E, A](fa: F[A])(using ME: MonadError[F, E], logger: Logger[F])

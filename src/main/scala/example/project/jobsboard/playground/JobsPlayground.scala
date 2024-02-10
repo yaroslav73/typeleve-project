@@ -1,15 +1,15 @@
 package example.project.jobsboard.playground
 
-import cats.effect.IO
-import cats.effect.IOApp
-import cats.effect.kernel.Resource
-import cats.syntax.all.*
+import scala.io.StdIn
 import cats.effect.implicits.*
+import cats.effect.kernel.Resource
+import cats.effect.{IO, IOApp}
+import cats.syntax.all.*
+
 import doobie.hikari.HikariTransactor
-import example.project.jobsboard.domain.Job.JobInfo
 import doobie.util.ExecutionContexts
 import example.project.jobsboard.core.Jobs.LiveJobs
-import scala.io.StdIn
+import example.project.jobsboard.domain.Job.JobInfo
 
 // TODO: Move it to the tests
 object JobsPlayground extends IOApp.Simple:

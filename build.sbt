@@ -17,6 +17,14 @@ lazy val logbackVersion             = "1.4.0"
 lazy val slf4jVersion               = "2.0.0"
 lazy val javaMailVersion            = "1.6.2"
 
+inThisBuild(
+  List(
+    scalaVersion := scala3Version,
+    semanticdbEnabled := true,
+    semanticdbVersion := scalafixSemanticdb.revision,
+  )
+)
+
 lazy val server = (project in file("."))
   .settings(
     name := "typelevel-project",

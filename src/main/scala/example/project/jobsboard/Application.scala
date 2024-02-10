@@ -1,15 +1,14 @@
 package example.project.jobsboard
 
-import example.project.jobsboard.config.AppConfig
-import example.project.jobsboard.modules.{ Core, HttpApi }
 import cats.effect.{ IO, IOApp }
+
+import example.project.jobsboard.config.{AppConfig, loadF}
+import example.project.jobsboard.modules.{Core, HttpApi, Postgres}
 import org.http4s.ember.server.EmberServerBuilder
-import pureconfig.ConfigSource
-import pureconfig.error.ConfigReaderException
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import example.project.jobsboard.config.loadF
-import example.project.jobsboard.modules.Postgres
+import pureconfig.ConfigSource
+import pureconfig.error.ConfigReaderException
 
 object Application extends IOApp.Simple:
 

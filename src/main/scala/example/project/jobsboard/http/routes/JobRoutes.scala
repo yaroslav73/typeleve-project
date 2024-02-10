@@ -1,28 +1,27 @@
 package example.project.jobsboard.http.routes
 
-import cats.Monad
-import cats.MonadThrow
-import cats.syntax.semigroupk.toSemigroupKOps
+import java.time.Instant
+import java.util.UUID
+import scala.collection.mutable
+import cats.effect.Concurrent
+import cats.syntax.applicative.catsSyntaxApplicativeId
 import cats.syntax.flatMap.toFlatMapOps
 import cats.syntax.functor.toFunctorOps
-import cats.syntax.applicative.catsSyntaxApplicativeId
-import cats.effect.Concurrent
-import org.http4s.HttpRoutes
-import org.http4s.dsl.Http4sDsl
-import org.http4s.server.Router
+import cats.syntax.semigroupk.toSemigroupKOps
+import cats.{Applicative, Monad, MonadThrow}
+
+import example.project.jobsboard.core.Jobs
+import example.project.jobsboard.domain.Job
+import example.project.jobsboard.domain.Job.JobInfo
+import example.project.jobsboard.http.responses.FailureResponse
+import io.circe.generic.auto.*
 import org.http4s.FormDataDecoder.formEntityDecoder
+import org.http4s.HttpRoutes
 import org.http4s.circe.CirceEntityDecoder.*
 import org.http4s.circe.CirceEntityEncoder.*
-import io.circe.generic.auto.*
-import java.util.UUID
-import example.project.jobsboard.domain.Job
-import example.project.jobsboard.http.responses.FailureResponse
-import example.project.jobsboard.domain.Job.JobInfo
-import scala.collection.mutable
-import java.time.Instant
-import cats.Applicative
+import org.http4s.dsl.Http4sDsl
+import org.http4s.server.Router
 import org.typelevel.log4cats.Logger
-import example.project.jobsboard.core.Jobs
 
 // TODO: Why we use Concurrent here?
 class JobRoutes[F[_]: Concurrent: Logger] private (jobs: Jobs[F]) extends Http4sDsl[F]:

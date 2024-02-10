@@ -70,7 +70,7 @@ object Cats:
 
     given Applicative[Box] = new Applicative[Box]:
       def ap[A, B](ff: Box[A => B])(fa: Box[A]): Box[B] = Box(ff.value(fa.value))
-      def pure[A](x: A): Box[A]                         = Box(x)
+      def pure[A](x: A): Box[A] = Box(x)
 
     // given FlatMap[Box] = new FlatMap[Box]:
     //   def map[A, B](fa: Box[A])(f: A => B): Box[B]          = ???

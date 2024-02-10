@@ -1,13 +1,12 @@
 package example.project.foundations
 
-import cats.effect.IOApp
-import cats.effect.ExitCode
-import cats.effect.IO
-import doobie.implicits.*
-import doobie.util.transactor.Transactor
 import cats.effect.kernel.MonadCancelThrow
-import doobie.util.ExecutionContexts
+import cats.effect.{ExitCode, IO, IOApp}
+
 import doobie.hikari.HikariTransactor
+import doobie.implicits.*
+import doobie.util.ExecutionContexts
+import doobie.util.transactor.Transactor
 
 // To run db:
 // docker-compose up
@@ -23,9 +22,9 @@ object Dobie extends IOApp.Simple:
 
   private val xa: Transactor[IO] = Transactor.fromDriverManager[IO](
     driver = "org.postgresql.Driver",
-    url = "jdbc:postgresql:demo",
-    user = "docker",
-    pass = "docker",
+    url    = "jdbc:postgresql:demo",
+    user   = "docker",
+    pass   = "docker",
   )
 
   def findAllStudentNames: IO[List[String]] =
@@ -74,10 +73,10 @@ object Dobie extends IOApp.Simple:
       ec <- ExecutionContexts.fixedThreadPool[IO](8)
       xa <- HikariTransactor.newHikariTransactor[IO](
         driverClassName = "org.postgresql.Driver",
-        url = "jdbc:postgresql:demo",
-        user = "docker",
-        pass = "docker",
-        connectEC = ec,
+        url             = "jdbc:postgresql:demo",
+        user            = "docker",
+        pass            = "docker",
+        connectEC       = ec,
       )
     } yield xa
 

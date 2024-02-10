@@ -1,10 +1,10 @@
 package example.project.jobsboard.modules
 
-import example.project.jobsboard.config.PostgresConfig
-import cats.effect.kernel.Async
-import cats.effect.kernel.Resource
+import cats.effect.kernel.{Async, Resource}
+
 import doobie.hikari.HikariTransactor
 import doobie.util.ExecutionContexts
+import example.project.jobsboard.config.PostgresConfig
 
 object Postgres:
   def make[F[_]: Async](config: PostgresConfig): Resource[F, HikariTransactor[F]] =

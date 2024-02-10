@@ -1,13 +1,10 @@
 package example.project.jobsboard.config
 
-import pureconfig.ConfigReader
-import pureconfig.generic.derivation.default.*
-import com.comcast.ip4s.Host
-import com.comcast.ip4s.Port
-import pureconfig.ConfigCursor
+import com.comcast.ip4s.{Host, Port}
 import pureconfig.ConfigReader.Result
-import pureconfig.error.FailureReason
-import pureconfig.error.CannotConvert
+import pureconfig.error.{CannotConvert, FailureReason}
+import pureconfig.generic.derivation.default.*
+import pureconfig.{ConfigCursor, ConfigReader}
 
 final case class EmberConfig(host: Host, port: Port) derives ConfigReader
 

@@ -1,8 +1,9 @@
 package example.project.jobsboard.domain
 
-import java.util.UUID
 import java.time.Instant
+import java.util.UUID
 import cats.instances.boolean
+
 import example.project.jobsboard.domain.Job.JobInfo
 
 // TODO: Using opaque type

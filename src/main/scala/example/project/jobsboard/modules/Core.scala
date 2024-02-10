@@ -1,8 +1,8 @@
 package example.project.jobsboard.modules
 
+import cats.effect.kernel.{Async, Resource}
 import cats.syntax.all.*
-import cats.effect.kernel.Async
-import cats.effect.kernel.Resource
+
 import doobie.util.transactor.Transactor
 import example.project.jobsboard.core.Jobs
 import example.project.jobsboard.core.Jobs.LiveJobs

@@ -1,29 +1,13 @@
 package example.project.foundations
 
-import cats.effect.IO
-import scala.io.StdIn
-import cats.effect.IOApp
-
-import concurrent.duration.DurationInt
-import scala.util.Random
-import cats.effect.kernel.Resource
-import scala.io.Source
-import java.io.PrintWriter
-import java.io.FileWriter
-import java.io.File
-import cats.MonadError
-import cats.effect.kernel.MonadCancel
-import cats.effect.kernel.Fiber
-import cats.effect.kernel.GenSpawn
-import cats.effect.kernel.Spawn
-import cats.effect.kernel.Ref
-import cats.effect.kernel.Temporal
-import cats.effect.kernel.Deferred
-import cats.effect.kernel.Concurrent
-import scala.concurrent.duration.FiniteDuration
-import cats.Defer
-import cats.effect.kernel.Sync
+import java.io.{File, FileWriter, PrintWriter}
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.io.{Source, StdIn}
+import scala.util.Random
+import cats.effect.kernel.{Concurrent, Deferred, Fiber, GenSpawn, MonadCancel, Ref, Resource, Spawn, Sync, Temporal}
+import cats.effect.{IO, IOApp}
+import cats.{Defer, MonadError}
 
 object CatsEffect extends IOApp.Simple:
   // Describing computations as values

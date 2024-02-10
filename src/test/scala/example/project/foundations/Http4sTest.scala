@@ -1,12 +1,13 @@
 package example.project.foundations
 
 import cats.effect._
-import org.http4s._
-import org.http4s.implicits._
-import org.http4s.dsl.io._
 import cats.effect.testing.scalatest.AsyncIOSpec
-import org.scalatest.matchers.should.Matchers
+
+import org.http4s._
+import org.http4s.dsl.io._
+import org.http4s.implicits._
 import org.scalatest.funsuite.AsyncFunSuite
+import org.scalatest.matchers.should.Matchers
 
 class Http4sTest extends AsyncFunSuite with AsyncIOSpec with Matchers:
   private val endpoints = Http4s.endpoints[IO].orNotFound

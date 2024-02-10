@@ -1,16 +1,17 @@
 package example.project.jobsboard.core
 
+import java.time.Instant
+import java.util.UUID
 import cats.effect.kernel.MonadCancelThrow
 import cats.syntax.applicative.catsSyntaxApplicativeId
 import cats.syntax.flatMap.toFlatMapOps
-import example.project.jobsboard.domain.Job.JobInfo
-import example.project.jobsboard.domain.Job
-import java.util.UUID
+
 import doobie.*
-import doobie.util.*
 import doobie.implicits.*
 import doobie.postgres.implicits.*
-import java.time.Instant
+import doobie.util.*
+import example.project.jobsboard.domain.Job
+import example.project.jobsboard.domain.Job.JobInfo
 
 trait Jobs[F[_]]:
   def all(): F[List[Job]]
