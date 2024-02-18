@@ -90,7 +90,7 @@ trait JobFixture:
     "Awesome Company",
     "Tech Lead",
     "An awesome job in Berlin",
-    "example.com",
+    "https://example.com",
     "Berlin",
     false,
     2000.some,

@@ -8,7 +8,7 @@ import cats.syntax.applicative.catsSyntaxApplicativeId
 import cats.syntax.flatMap.toFlatMapOps
 import cats.syntax.functor.toFunctorOps
 import cats.syntax.semigroupk.toSemigroupKOps
-import cats.{Applicative, Monad, MonadThrow}
+import cats.{ Applicative, Monad, MonadThrow }
 
 import example.project.jobsboard.core.Jobs
 import example.project.jobsboard.domain.Job
@@ -22,6 +22,7 @@ import org.http4s.circe.CirceEntityEncoder.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 import org.typelevel.log4cats.Logger
+import example.project.jobsboard.http.validations.validate
 
 // TODO: Why we use Concurrent here?
 class JobRoutes[F[_]: Concurrent: Logger] private (jobs: Jobs[F]) extends Http4sDsl[F]:
@@ -44,23 +45,25 @@ class JobRoutes[F[_]: Concurrent: Logger] private (jobs: Jobs[F]) extends Http4s
   // POST /jobs/new { job info }
   private val createJobRoute: HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / "new" =>
-      for
-        jobInfo  <- req.as[JobInfo]
-        id       <- jobs.create("test@test.test", jobInfo) // TODO: Remove hardcoded email
-        response <- Created(id)
-      yield response
+      req.validate[JobInfo] { jobInfo =>
+        for
+          id       <- jobs.create("test@test.test", jobInfo) // TODO: Remove hardcoded email
+          response <- Created(id)
+        yield response
+      }
   }
 
   // PUT /jobs/uuid { job info }
   private val updateJobRoute: HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ PUT -> Root / UUIDVar(id) =>
-      for
-        jobInfo <- req.as[JobInfo]
-        updated <- jobs.update(id, jobInfo)
-        response <- updated match
-          case Some(updated) => Ok(updated)
-          case None          => NotFound(FailureResponse(s"Job with id $id not found"))
-      yield response
+      req.validate[JobInfo] { jobInfo =>
+        for
+          updated <- jobs.update(id, jobInfo)
+          response <- updated match
+            case Some(updated) => Ok(updated)
+            case None          => NotFound(FailureResponse(s"Job with id $id not found"))
+        yield response
+      }
   }
 
   // DELETE /jobs/uuid
