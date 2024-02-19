@@ -9,8 +9,12 @@ import org.scalatest.Status
 import example.project.jobsboard.core.Jobs.LiveJobs
 import cats.effect.IO
 import org.scalatest.BeforeAndAfterAll
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 class JobsSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with Database with JobFixture {
+  given Logger[IO] = Slf4jLogger.getLogger[IO]
+
   val initStript: String = "sql/jobs.sql"
 
   "Jobs 'algebra'" - {

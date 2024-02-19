@@ -23,6 +23,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
+import example.project.jobsboard.utils.Pagination
+import example.project.jobsboard.domain.Job.JobFilter
 
 class JobRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with Http4sDsl[IO] with JobFixture:
 
@@ -107,6 +109,9 @@ class JobRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with Ht
 
   private val jobs = new Jobs[IO] {
     override def all(): IO[List[Job]] =
+      IO.pure(List(TestJob))
+
+    override def all(filter: JobFilter, pagination: Pagination): IO[List[Job]] =
       IO.pure(List(TestJob))
 
     override def find(id: UUID): IO[Option[Job]] =

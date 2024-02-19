@@ -23,14 +23,22 @@ import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 import org.typelevel.log4cats.Logger
 import example.project.jobsboard.http.validations.validate
+import example.project.jobsboard.domain.Job.JobFilter
+import example.project.jobsboard.utils.Pagination
 
 // TODO: Why we use Concurrent here?
 class JobRoutes[F[_]: Concurrent: Logger] private (jobs: Jobs[F]) extends Http4sDsl[F]:
+  object LimitQueryParam extends QueryParamDecoderMatcher[Int]("limit")
+  object OffsetQueryParam extends QueryParamDecoderMatcher[Int]("offset")
+
   // POST /jobs?offset=n&limit=k { filters }
-  // TODO: Add query parameters and filters
   private val allJobsRoute: HttpRoutes[F] = HttpRoutes.of[F] {
-    case POST -> Root =>
-      jobs.all().flatMap(Ok(_))
+    case req @ POST -> Root :? LimitQueryParam(limit) +& OffsetQueryParam(offset) =>
+      for
+        filters  <- req.as[JobFilter]
+        jobs     <- jobs.all(filters, Pagination(offset, limit))
+        response <- Ok(jobs)
+      yield response
   }
 
   // GET /jobs/uuid

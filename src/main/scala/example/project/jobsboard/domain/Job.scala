@@ -55,3 +55,13 @@ object Job:
       )
 
   final case class SalaryRange(min: BigDecimal, main: BigDecimal)
+
+  final case class JobFilter(
+    companies: List[String]   = List.empty,
+    locations: List[String]   = List.empty,
+    countries: List[String]   = List.empty,
+    tags: List[String]        = List.empty,
+    seniority: Option[String] = None,
+    salary: Option[Int]       = None,
+    remote: Boolean           = false,
+  )
