@@ -1,6 +1,6 @@
 package example.project.jobsboard.utils
 
-final case class Pagination(limit: Int, offset: Int)
+final case class Pagination private (limit: Int, offset: Int)
 
 object Pagination:
   private val DefaultLimit  = 10

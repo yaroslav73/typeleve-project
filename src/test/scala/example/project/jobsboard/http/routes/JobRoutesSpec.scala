@@ -41,7 +41,7 @@ class JobRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with Ht
     }
 
     "should return all jobs" in {
-      val request = Request[IO](Method.POST, uri"/jobs")
+      val request = Request[IO](Method.POST, uri"/jobs").withEntity(JobFilter())
 
       for
         response <- jobRoutes.run(request)
@@ -49,6 +49,17 @@ class JobRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with Ht
       yield
         response.status shouldBe Status.Ok
         payload         shouldBe List(TestJob)
+    }
+
+    "should return all remote jobs" in {
+      val request = Request[IO](Method.POST, uri"/jobs").withEntity(JobFilter(remote = true))
+
+      for
+        response <- jobRoutes.run(request)
+        payload  <- response.as[List[Job]]
+      yield
+        response.status shouldBe Status.Ok
+        payload         shouldBe List.empty
     }
 
     "should create a new job" in {
@@ -112,7 +123,8 @@ class JobRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with Ht
       IO.pure(List(TestJob))
 
     override def all(filter: JobFilter, pagination: Pagination): IO[List[Job]] =
-      IO.pure(List(TestJob))
+      if filter.remote then IO.pure(List.empty[Job])
+      else IO.pure(List(TestJob))
 
     override def find(id: UUID): IO[Option[Job]] =
       all().map(_.find(_.id == id))

@@ -11,6 +11,8 @@ import cats.effect.IO
 import org.scalatest.BeforeAndAfterAll
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
+import example.project.jobsboard.domain.Job.JobFilter
+import example.project.jobsboard.utils.Pagination
 
 class JobsSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with Database with JobFixture {
   given Logger[IO] = Slf4jLogger.getLogger[IO]
@@ -45,6 +47,26 @@ class JobsSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with Databas
         val result = for
           jobs <- LiveJobs[IO](xa)
           jobs <- jobs.all()
+        yield jobs
+
+        result.asserting(_ shouldBe List(TestJob))
+      }
+    }
+
+    "should return all jobs by filter" in {
+      transactor.use { xa =>
+        val filter = JobFilter(
+          companies = List("Awesome Company"),
+          locations = List("Berlin"),
+          countries = List("Germany"),
+          tags      = List("scala-3", "cats"),
+          seniority = Some("Senior"),
+          salary    = Some(5000)
+        )
+
+        val result = for
+          jobs <- LiveJobs[IO](xa)
+          jobs <- jobs.all(filter, Pagination.Default)
         yield jobs
 
         result.asserting(_ shouldBe List(TestJob))
