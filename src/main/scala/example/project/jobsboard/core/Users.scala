@@ -22,35 +22,13 @@ trait Users[F[_]]:
 object Users:
   def make[F[_]: MonadCancelThrow](xa: Transactor[F]): Users[F] = new Users[F] {
     def find(email: String): F[Option[User]] =
-      sql"""
-        SELECT 
-          id, 
-          email, 
-          password, 
-          first_name, 
-          last_name, 
-          company, 
-          role
-        FROM users
-        WHERE email = $email
-      """
+      sql"SELECT * FROM users WHERE email = $email"
         .query[User]
         .option
         .transact(xa)
 
     def find(id: UUID): F[Option[User]] =
-      sql"""
-        SELECT 
-          id, 
-          email, 
-          password, 
-          first_name, 
-          last_name, 
-          company, 
-          role
-        FROM users
-        WHERE id = $id
-      """
+      sql"SELECT * FROM users WHERE id = $id"
         .query[User]
         .option
         .transact(xa)
@@ -79,7 +57,7 @@ object Users:
         .flatMap(_ => find(user.id))
 
     def delete(id: UUID): F[Boolean] =
-      sql"""DELETE FROM users WHERE id = $id""".update.run
+      sql"DELETE FROM users WHERE id = $id".update.run
         .transact(xa)
         .map(_ > 0)
   }
