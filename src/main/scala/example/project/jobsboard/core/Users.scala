@@ -62,14 +62,5 @@ object Users:
         .map(_ > 0)
   }
 
-  // TODO: Extract to the separate layer - reads or smth else
-  given roleRead: Read[User.Role] = Read[String].map {
-    case "ADMIN"      => User.Role.ADMIN
-    case "RECRUITTER" => User.Role.RECRUITTER
-  }
-
-  // TODO: why contramap is used here?
-  given roleWrite: Write[User.Role] = Write[String].contramap {
-    case User.Role.ADMIN      => "ADMIN"
-    case User.Role.RECRUITTER => "RECRUITTER"
-  }
+  // TODO: Extract to the separate layer - meta
+  given metaRole: Meta[User.Role] = Meta[String].timap[User.Role](User.Role.valueOf)(_.toString)
