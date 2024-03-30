@@ -1,7 +1,7 @@
 package example.project.foundations
 
 import cats.effect.kernel.MonadCancelThrow
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.{ ExitCode, IO, IOApp }
 
 import doobie.hikari.HikariTransactor
 import doobie.implicits.*

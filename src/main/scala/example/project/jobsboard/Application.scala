@@ -2,8 +2,8 @@ package example.project.jobsboard
 
 import cats.effect.{ IO, IOApp }
 
-import example.project.jobsboard.config.{AppConfig, loadF}
-import example.project.jobsboard.modules.{Core, HttpApi, Postgres}
+import example.project.jobsboard.config.{ AppConfig, loadF }
+import example.project.jobsboard.modules.{ Core, HttpApi, Postgres }
 import org.http4s.ember.server.EmberServerBuilder
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger

@@ -1,16 +1,16 @@
 package example.project.foundations
 
 import java.util.UUID
-import cats.effect.{IO, IOApp}
+import cats.effect.{ IO, IOApp }
 import cats.syntax.all.toSemigroupKOps
-import cats.{Applicative, Monad}
+import cats.{ Applicative, Monad }
 
 import io.circe.generic.auto.*
 import io.circe.syntax.*
 import org.http4s.HttpRoutes
 import org.http4s.circe.*
 import org.http4s.dsl.Http4sDsl
-import org.http4s.dsl.impl.{OptionalValidatingQueryParamDecoderMatcher, QueryParamDecoderMatcher}
+import org.http4s.dsl.impl.{ OptionalValidatingQueryParamDecoderMatcher, QueryParamDecoderMatcher }
 import org.http4s.ember.server.EmberServerBuilder
 
 object Http4s extends IOApp.Simple:

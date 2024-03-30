@@ -1,6 +1,6 @@
 package example.project.jobsboard.modules
 
-import cats.effect.kernel.{Async, Resource}
+import cats.effect.kernel.{ Async, Resource }
 
 import doobie.hikari.HikariTransactor
 import doobie.util.ExecutionContexts

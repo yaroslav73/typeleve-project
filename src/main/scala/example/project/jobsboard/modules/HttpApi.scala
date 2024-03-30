@@ -4,7 +4,7 @@ import cats.effect.Concurrent
 import cats.effect.kernel.Resource
 import cats.syntax.all.toSemigroupKOps
 
-import example.project.jobsboard.http.routes.{HealthRoutes, JobRoutes}
+import example.project.jobsboard.http.routes.{ HealthRoutes, JobRoutes }
 import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
