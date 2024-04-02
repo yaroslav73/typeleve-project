@@ -36,7 +36,7 @@ object Users:
     def create(user: User.New): F[UUID] =
       sql"""
         INSERT INTO users (email, password, first_name, last_name, company, role)
-        VALUES (${user.email}, ${user.hashedPassword}, ${user.firstName}, ${user.lastName}, ${user.company}, ${user.role})
+        VALUES (${user.email}, ${user.password}, ${user.firstName}, ${user.lastName}, ${user.company}, ${user.role})
       """.update
         .withUniqueGeneratedKeys[UUID]("id")
         .transact(xa)

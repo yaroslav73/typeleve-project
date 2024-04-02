@@ -19,28 +19,31 @@ object User:
 
   final case class New private (
     email: String,
-    hashedPassword: String,
+    password: String,
     firstName: Option[String],
     lastName: Option[String],
     company: Option[String],
     role: Role,
-  )
+  ) {
+    // TODO: maybe add this on type level? NewWithHashedPassword and store only this type?
+    def withHashedPassword(hashedPassword: String): New = copy(password = hashedPassword)
+  }
 
   object New:
     def admin(
       email: String,
-      hashedPassword: String,
+      password: String,
       firstName: Option[String],
       lastName: Option[String],
       company: Option[String]
     ): New =
-      New(email, hashedPassword, firstName, lastName, company, Role.ADMIN)
+      New(email, password, firstName, lastName, company, Role.ADMIN)
 
     def recruiter(
       email: String,
-      hashedPassword: String,
+      password: String,
       firstName: Option[String],
       lastName: Option[String],
       company: Option[String]
     ): New =
-      New(email, hashedPassword, firstName, lastName, company, Role.RECRUITTER)
+      New(email, password, firstName, lastName, company, Role.RECRUITTER)

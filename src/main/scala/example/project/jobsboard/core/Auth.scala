@@ -8,10 +8,10 @@ import example.project.jobsboard.domain.User
 import example.project.jobsboard.domain.User.New
 import example.project.jobsboard.domain.Aliases.JwtToken
 import example.project.jobsboard.domain.Aliases.Authenticator
-import cats.FlatMap
 import cats.Applicative
-import cats.Monad
-import cats.Functor
+import tsec.passwordhashers.jca.BCrypt
+import tsec.passwordhashers.PasswordHash
+import cats.effect.kernel.Sync
 
 trait Auth[F[_]]:
   def login(email: String, password: String): F[Option[JwtToken]]
@@ -19,32 +19,44 @@ trait Auth[F[_]]:
   def changePassword(email: String, newPassword: NewPasswordInfo): F[Either[String, Option[User]]]
 
 object Auth:
-  def make[F[_]: Monad](users: Users[F], authenticator: Authenticator[F]): Auth[F] = new Auth[F] {
+  def make[F[_]: Sync](users: Users[F], authenticator: Authenticator[F]): Auth[F] = new Auth[F] {
     def login(email: String, password: String): F[Option[JwtToken]] =
-      users.find(email).flatMap {
-        case Some(user) if user.hashedPassword == password =>
-          authenticator.create(user.email).map(_.some)
-        case _ =>
-          Applicative[F].pure(None)
-      }
+      for {
+        user  <- users.find(email)
+        user  <- user.filterA(user => BCrypt.checkpwBool[F](password, PasswordHash[BCrypt](user.hashedPassword)))
+        token <- user.traverse(user => authenticator.create(user.email))
+      } yield token
 
     def signUp(user: New): F[Option[User]] =
-      users.find(user.email).flatMap {
-        case Some(_) => Applicative[F].pure(None)
-        case _ =>
-          for {
-            userId <- users.create(user)
-            user   <- users.find(userId)
-          } yield user
-      }
+      for {
+        userOpt <- users.find(user.email)
+        user <- userOpt match
+          case Some(_) => None.pure[F]
+          case _ =>
+            for {
+              hashedPassword <- BCrypt.hashpw[F](user.password)
+              userId         <- users.create(user.withHashedPassword(hashedPassword))
+              user           <- users.find(userId)
+            } yield user
+      } yield user
 
     def changePassword(email: String, passwordInfo: NewPasswordInfo): F[Either[String, Option[User]]] =
-      users.find(email).flatMap {
-        case Some(user) if user.hashedPassword == passwordInfo.oldPassword =>
-          users.update(user.copy(hashedPassword = passwordInfo.newPassword)).map(_.asRight)
-        case Some(_) =>
-          Applicative[F].pure("Invalid password".asLeft)
-        case _ =>
-          Applicative[F].pure("User with this email not found".asLeft)
-      }
+      for {
+        user <- users.find(email)
+        user <- user match
+          case Some(user) =>
+            BCrypt
+              .checkpwBool[F](passwordInfo.oldPassword, PasswordHash[BCrypt](user.hashedPassword))
+              .ifM(
+                updatePassword(user, passwordInfo.newPassword).map(_.asRight),
+                "Invalid password".asLeft.pure[F]
+              )
+          case None => "User with this email not found".asLeft.pure[F]
+      } yield user
+
+    private def updatePassword(user: User, newPassword: String) =
+      for {
+        hashedPassword <- BCrypt.hashpw[F](newPassword)
+        user           <- users.update(user.copy(hashedPassword = hashedPassword))
+      } yield user
   }

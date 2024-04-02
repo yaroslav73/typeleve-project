@@ -34,7 +34,7 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
 
     "login should return token if the user exists and password is correct" in {
       val auth  = Auth.make[IO](testUsers, authenticator)
-      val token = auth.login(john.email, john.hashedPassword)
+      val token = auth.login(john.email, "password1")
 
       token.asserting(_ shouldBe defined)
     }
@@ -43,11 +43,11 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
       val auth = Auth.make[IO](testUsers, authenticator)
       val userId = auth.signUp(
         User.New.recruiter(
-          email          = john.email,
-          hashedPassword = "123456789",
-          firstName      = Some("Test"),
-          lastName       = Some("Name"),
-          company        = Some("Test Company"),
+          email     = john.email,
+          password  = "123456789",
+          firstName = Some("Test"),
+          lastName  = Some("Name"),
+          company   = Some("Test Company"),
         )
       )
 
@@ -58,11 +58,11 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
       val auth = Auth.make[IO](testUsers, authenticator)
       val userId = auth.signUp(
         User.New.recruiter(
-          email          = NotFoundUserEmail,
-          hashedPassword = "123456789",
-          firstName      = Some("Test"),
-          lastName       = Some("Name"),
-          company        = Some("Test Company"),
+          email     = NotFoundUserEmail,
+          password  = "123456789",
+          firstName = Some("Test"),
+          lastName  = Some("Name"),
+          company   = Some("Test Company"),
         )
       )
 
@@ -85,7 +85,7 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
 
     "changePassword should change password if user exists" in {
       val auth   = Auth.make[IO](testUsers, authenticator)
-      val result = auth.changePassword(john.email, NewPasswordInfo(john.hashedPassword, "newpassword"))
+      val result = auth.changePassword(john.email, NewPasswordInfo("password1", "newpassword"))
 
       result.asserting(_ shouldBe Right(Some(john)))
     }
