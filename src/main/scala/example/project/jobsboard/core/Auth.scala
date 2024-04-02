@@ -23,7 +23,7 @@ object Auth:
     def login(email: String, password: String): F[Option[JwtToken]] =
       for {
         user  <- users.find(email)
-        user  <- user.filterA(user => BCrypt.checkpwBool[F](password, PasswordHash[BCrypt](user.hashedPassword)))
+        user  <- user.filterA(user => checkPassword(password, user.hashedPassword))
         token <- user.traverse(user => authenticator.create(user.email))
       } yield token
 
@@ -45,18 +45,19 @@ object Auth:
         user <- users.find(email)
         user <- user match
           case Some(user) =>
-            BCrypt
-              .checkpwBool[F](passwordInfo.oldPassword, PasswordHash[BCrypt](user.hashedPassword))
-              .ifM(
-                updatePassword(user, passwordInfo.newPassword).map(_.asRight),
-                "Invalid password".asLeft.pure[F]
-              )
+            checkPassword(passwordInfo.oldPassword, user.hashedPassword).ifM(
+              updatePassword(user, passwordInfo.newPassword).map(_.asRight),
+              "Invalid password".asLeft.pure[F]
+            )
           case None => "User with this email not found".asLeft.pure[F]
       } yield user
 
-    private def updatePassword(user: User, newPassword: String) =
+    private def updatePassword(user: User, newPassword: String): F[Option[User]] =
       for {
         hashedPassword <- BCrypt.hashpw[F](newPassword)
         user           <- users.update(user.copy(hashedPassword = hashedPassword))
       } yield user
+
+    private def checkPassword(password: String, hashedPassword: String): F[Boolean] =
+      BCrypt.checkpwBool[F](password, PasswordHash[BCrypt](hashedPassword))
   }
