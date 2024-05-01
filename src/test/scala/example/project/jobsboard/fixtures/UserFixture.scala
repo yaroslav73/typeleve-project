@@ -27,4 +27,20 @@ trait UserFixture {
     company        = Some("Continental"),
     role           = User.Role.RECRUITTER
   )
+
+  val johnNewUser = User.New.recruiter(
+    email     = john.email,
+    password  = "password1",
+    firstName = john.firstName,
+    lastName  = john.lastName,
+    company   = john.company
+  )
+
+  val annaNewUser = User.New.recruiter(
+    email     = anna.email,
+    password  = "password2",
+    firstName = anna.firstName,
+    lastName  = anna.lastName,
+    company   = anna.company
+  )
 }
