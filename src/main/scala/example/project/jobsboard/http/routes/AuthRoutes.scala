@@ -7,12 +7,14 @@ import cats.syntax.all.toSemigroupKOps
 import io.circe.generic.auto.*
 import org.http4s.FormDataDecoder.formEntityDecoder
 import org.http4s.HttpRoutes
+import org.http4s.EntityEncoder
 import org.http4s.circe.CirceEntityDecoder.*
 import org.http4s.circe.CirceEntityEncoder.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 import example.project.jobsboard.core.Auth
 import example.project.jobsboard.domain.Auth.LoginInfo
+import example.project.jobsboard.http.responses.FailureResponse
 import org.typelevel.log4cats.Logger
 import org.http4s.Response
 
@@ -26,7 +28,12 @@ class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4
         loginInfo <- req.as[LoginInfo]
         token     <- auth.login(loginInfo.email, loginInfo.password)
         _         <- Logger[F].info(s"User ${loginInfo.email} logged in")
-        response   = token.fold(Response[F](Unauthorized))(token => authenticator.embed(Response[F](Ok), token))
+        response = token.fold(
+          Response[F](
+            Unauthorized,
+            body = EntityEncoder[F, FailureResponse].toEntity(FailureResponse("User or password is incorrect")).body
+          )
+        )(token => authenticator.embed(Response[F](Ok), token))
       } yield response
   }
 

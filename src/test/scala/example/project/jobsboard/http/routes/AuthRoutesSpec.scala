@@ -39,10 +39,10 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
 
       for {
         response <- authRoutes.run(request)
-        // payload  <- response.as[FailureResponse]
+        payload  <- response.as[FailureResponse]
       } yield {
         response.status shouldBe Status.Unauthorized
-        // payload         shouldBe FailureResponse(s"User not found or password is incorrect")
+        payload         shouldBe FailureResponse("User or password is incorrect")
       }
     }
 
@@ -51,10 +51,10 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
 
       for {
         response <- authRoutes.run(request)
-        // payload  <- response.as[FailureResponse]
+        payload  <- response.as[FailureResponse]
       } yield {
         response.status shouldBe Status.Unauthorized
-        // payload         shouldBe FailureResponse(s"User not found or password is incorrect")
+        payload         shouldBe FailureResponse("User or password is incorrect")
       }
     }
 
