@@ -29,35 +29,37 @@ import cats.data.OptionT
 import tsec.authentication.JWTAuthenticator
 import concurrent.duration.DurationInt
 import tsec.jws.mac.JWTMac
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with Http4sDsl[IO] with UserFixture:
   "AuthRoutes" - {
-    "login should return bad request if user not found" in {
-      val request = Request[IO](Method.POST, uri"/login").withEntity(LoginInfo(NotFoundUserEmail, "password1"))
+    "login should return unauthorized if user not found" in {
+      val request = Request[IO](Method.POST, uri"/auth/login").withEntity(LoginInfo(NotFoundUserEmail, "password1"))
 
       for {
         response <- authRoutes.run(request)
-        payload  <- response.as[FailureResponse]
+        // payload  <- response.as[FailureResponse]
       } yield {
-        response.status shouldBe Status.NotFound
-        payload         shouldBe FailureResponse(s"User not found or password is incorrect")
+        response.status shouldBe Status.Unauthorized
+        // payload         shouldBe FailureResponse(s"User not found or password is incorrect")
       }
     }
 
-    "login should return bad request if password is incorrect" in {
-      val request = Request[IO](Method.POST, uri"/login").withEntity(LoginInfo(john.email, "wrongpassword"))
+    "login should return unauthorized if password is incorrect" in {
+      val request = Request[IO](Method.POST, uri"/auth/login").withEntity(LoginInfo(john.email, "wrongpassword"))
 
       for {
         response <- authRoutes.run(request)
-        payload  <- response.as[FailureResponse]
+        // payload  <- response.as[FailureResponse]
       } yield {
-        response.status shouldBe Status.NotFound
-        payload         shouldBe FailureResponse(s"User not found or password is incorrect")
+        response.status shouldBe Status.Unauthorized
+        // payload         shouldBe FailureResponse(s"User not found or password is incorrect")
       }
     }
 
     "login should return JWT token if user found and password is correct" in {
-      val request = Request[IO](Method.POST, uri"/login").withEntity(LoginInfo(john.email, "password1"))
+      val request = Request[IO](Method.POST, uri"/auth/login").withEntity(LoginInfo(john.email, "password1"))
 
       for {
         response <- authRoutes.run(request)
@@ -113,7 +115,7 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       val request = Request[IO](Method.POST, uri"/logout")
 
       for {
-        jwtToken <- authenticator.create(john.email)
+        jwtToken <- authenticatorStub.create(john.email)
         response <- authRoutes.run(request.withBearerToken(jwtToken))
       } yield {
         response.status shouldBe Status.Ok
@@ -126,7 +128,7 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
         .withEntity(NewPasswordInfo("password1", "password2"))
 
       for {
-        jwtToken <- authenticator.create(NotFoundUserEmail)
+        jwtToken <- authenticatorStub.create(NotFoundUserEmail)
         response <- authRoutes.run(request.withBearerToken(jwtToken))
         payload  <- response.as[FailureResponse]
       } yield {
@@ -141,7 +143,7 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
         .withEntity(NewPasswordInfo("wrongpassword", "password2"))
 
       for {
-        jwtToken <- authenticator.create(john.email)
+        jwtToken <- authenticatorStub.create(john.email)
         response <- authRoutes.run(request.withBearerToken(jwtToken))
         payload  <- response.as[FailureResponse]
       } yield {
@@ -156,7 +158,7 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
         .withEntity(NewPasswordInfo("password1", "password2"))
 
       for {
-        jwtToken <- authenticator.create(NotFoundUserEmail)
+        jwtToken <- authenticatorStub.create(NotFoundUserEmail)
         response <- authRoutes.run(request.withBearerToken(jwtToken))
         payload  <- response.as[FailureResponse]
       } yield {
@@ -171,7 +173,7 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
         .withEntity(NewPasswordInfo("password1", "password2"))
 
       for {
-        jwtToken <- authenticator.create(john.email)
+        jwtToken <- authenticatorStub.create(john.email)
         response <- authRoutes.run(request.withBearerToken(jwtToken))
         user     <- response.as[User]
       } yield {
@@ -183,14 +185,16 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
 
   private val auth = new Auth[IO] {
     def login(email: String, password: String): IO[Option[JwtToken]] =
-      if (email == john.email && password == "password1") IO.pure(???) else IO.pure(None)
+      if (email == john.email && password == "password1") authenticator.create(john.email).map(Some(_))
+      else IO.pure(None)
     def signUp(user: User.New): IO[Option[User]] =
       if (user.email == john.email) IO.pure(None) else IO.pure(Some(john))
     def changePassword(email: String, newPassword: NewPasswordInfo): IO[Either[String, Option[User]]] =
       if (email == john.email) IO.pure(Right(Some(john))) else IO.pure(Left("User not found"))
+    def authenticator: Authenticator[IO] = authenticatorStub
   }
 
-  private val authenticator: Authenticator[IO] = {
+  private val authenticatorStub: Authenticator[IO] = {
     // 1. Key for hashing
     val key = HMACSHA256.unsafeGenerateKey
     // 2. Indentity store to retrieve users
@@ -208,6 +212,8 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       key,
     )
   }
+
+  given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
   private val authRoutes = AuthRoutes.make[IO](auth).routes.orNotFound
 

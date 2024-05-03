@@ -17,9 +17,10 @@ trait Auth[F[_]]:
   def login(email: String, password: String): F[Option[JwtToken]]
   def signUp(user: User.New): F[Option[User]]
   def changePassword(email: String, newPassword: NewPasswordInfo): F[Either[String, Option[User]]]
+  def authenticator: Authenticator[F]
 
 object Auth:
-  def make[F[_]: Sync](users: Users[F], authenticator: Authenticator[F]): Auth[F] = new Auth[F] {
+  def make[F[_]: Sync](users: Users[F], jwtAuthenticator: Authenticator[F]): Auth[F] = new Auth[F] {
     def login(email: String, password: String): F[Option[JwtToken]] =
       for {
         user  <- users.find(email)
@@ -51,6 +52,8 @@ object Auth:
             )
           case None => "User with this email not found".asLeft.pure[F]
       } yield user
+
+    def authenticator: Authenticator[F] = jwtAuthenticator
 
     private def updatePassword(user: User, newPassword: String): F[Option[User]] =
       for {
