@@ -73,20 +73,20 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
 
     // User created. Already exists => 400 BadRequest
     "signup should return bad request if user already exists" in {
-      val request = Request[IO](Method.POST, uri"/signup").withEntity(johnNewUser)
+      val request = Request[IO](Method.POST, uri"/auth/signup").withEntity(johnNewUser)
 
       for {
         response <- authRoutes.run(request)
         payload  <- response.as[FailureResponse]
       } yield {
         response.status shouldBe Status.BadRequest
-        payload         shouldBe FailureResponse(s"User with email ${john.email} already exists")
+        payload         shouldBe FailureResponse("User already exists")
       }
     }
 
     // User created. Success => 200 Ok
     "signup should return user if user created successfully" in {
-      val request = Request[IO](Method.POST, uri"/signup").withEntity(annaNewUser)
+      val request = Request[IO](Method.POST, uri"/auth/signup").withEntity(annaNewUser)
 
       for {
         response <- authRoutes.run(request)
@@ -188,10 +188,11 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       if (email == john.email && password == "password1") authenticator.create(john.email).map(Some(_))
       else IO.pure(None)
     def signUp(user: User.New): IO[Option[User]] =
-      if (user.email == john.email) IO.pure(None) else IO.pure(Some(john))
+      if (user.email == anna.email) IO.pure(Some(anna)) else IO.pure(None)
     def changePassword(email: String, newPassword: NewPasswordInfo): IO[Either[String, Option[User]]] =
       if (email == john.email) IO.pure(Right(Some(john))) else IO.pure(Left("User not found"))
-    def authenticator: Authenticator[IO] = authenticatorStub
+    def authenticator: Authenticator[IO] =
+      authenticatorStub
   }
 
   private val authenticatorStub: Authenticator[IO] = {

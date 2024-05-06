@@ -17,6 +17,7 @@ import example.project.jobsboard.domain.Auth.LoginInfo
 import example.project.jobsboard.http.responses.FailureResponse
 import org.typelevel.log4cats.Logger
 import org.http4s.Response
+import example.project.jobsboard.domain.User
 
 class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4sDsl[F]:
   private val authenticator = auth.authenticator
@@ -39,7 +40,12 @@ class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4
 
   // POST /auth/signup json { new user } => 201 Created with User
   private val signupRoute: HttpRoutes[F] = HttpRoutes.of[F] {
-    case req @ POST -> Root / "signup" => ???
+    case req @ POST -> Root / "signup" =>
+      for {
+        newUser  <- req.as[User.New]
+        user     <- auth.signUp(newUser)
+        response <- user.fold(BadRequest(FailureResponse("User already exists")))(user => Created(user))
+      } yield response
   }
 
   // POST /auth/change-password json { new password info } { Authorization: Bearer } => Ok with updated user
