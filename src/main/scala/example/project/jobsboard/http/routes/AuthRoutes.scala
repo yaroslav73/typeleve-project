@@ -4,7 +4,8 @@ import cats.effect.Concurrent
 import cats.syntax.all.toFlatMapOps
 import cats.syntax.all.toFunctorOps
 import cats.syntax.all.toSemigroupKOps
-// import cats.syntax.all.catsSyntaxApplicativeId
+import cats.syntax.all.catsSyntaxApplicativeId
+// import cats.Apply.ops.toAllApplyOps
 import io.circe.generic.auto.*
 import org.http4s.FormDataDecoder.formEntityDecoder
 import org.http4s.HttpRoutes
@@ -60,7 +61,7 @@ class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4
         token         = req.headers.get(ci"Authorization")
         result       <- authenticator.extractAndValidate(req).value
         response <- result match
-          case None => NotFound(FailureResponse("User not found"))
+          case None => NotFound(FailureResponse("User not found")) // TODO: should be unauthorized
           case Some(user) =>
             auth.changePassword(user.identity.email, passwordInfo).flatMap {
               case Left(error) => BadRequest(FailureResponse(error))
@@ -71,7 +72,13 @@ class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4
 
   // POST /auth/logout { Authorization: Bearer } => Ok
   private val logoutRoute: HttpRoutes[F] = HttpRoutes.of[F] {
-    case req @ POST -> Root / "logout" => ???
+    case req @ POST -> Root / "logout" =>
+      for {
+        result <- authenticator.extractAndValidate(req).value
+        response <- result.fold(Response[F](Unauthorized).pure[F])(sec =>
+          authenticator.discard(sec.authenticator).flatMap(_ => Ok())
+        )
+      } yield response
   }
 
   val routes: HttpRoutes[F] = Router[F]("/auth" -> (loginRoute <+> signupRoute <+> changePasswordRoute <+> logoutRoute))

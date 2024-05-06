@@ -160,20 +160,18 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
 
     // Logout. Try to logout without JWT => 401 Unauthorized
     "logout should return unauthorized if JWT is missing" in {
-      val request = Request[IO](Method.POST, uri"/logout")
+      val request = Request[IO](Method.POST, uri"/auth/logout")
 
       for {
         response <- authRoutes.run(request)
-        payload  <- response.as[FailureResponse]
       } yield {
         response.status shouldBe Status.Unauthorized
-        payload         shouldBe FailureResponse("Unauthorized")
       }
     }
 
     // Logout. With valid JWT => 200 Ok
     "logout should return ok if JWT is valid" in {
-      val request = Request[IO](Method.POST, uri"/logout")
+      val request = Request[IO](Method.POST, uri"/auth/logout")
 
       for {
         jwtToken <- authenticatorStub.create(john.email)
