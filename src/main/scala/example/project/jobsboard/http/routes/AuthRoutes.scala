@@ -4,6 +4,7 @@ import cats.effect.Concurrent
 import cats.syntax.all.toFlatMapOps
 import cats.syntax.all.toFunctorOps
 import cats.syntax.all.toSemigroupKOps
+// import cats.syntax.all.catsSyntaxApplicativeId
 import io.circe.generic.auto.*
 import org.http4s.FormDataDecoder.formEntityDecoder
 import org.http4s.HttpRoutes
@@ -12,12 +13,15 @@ import org.http4s.circe.CirceEntityDecoder.*
 import org.http4s.circe.CirceEntityEncoder.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
+import org.http4s.headers.Authorization
+import org.typelevel.ci.CIStringSyntax
 import example.project.jobsboard.core.Auth
 import example.project.jobsboard.domain.Auth.LoginInfo
 import example.project.jobsboard.http.responses.FailureResponse
 import org.typelevel.log4cats.Logger
 import org.http4s.Response
 import example.project.jobsboard.domain.User
+import example.project.jobsboard.domain.Auth.NewPasswordInfo
 
 class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4sDsl[F]:
   private val authenticator = auth.authenticator
@@ -50,7 +54,19 @@ class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4
 
   // POST /auth/change-password json { new password info } { Authorization: Bearer } => Ok with updated user
   private val changePasswordRoute: HttpRoutes[F] = HttpRoutes.of[F] {
-    case req @ POST -> Root / "change-password" => ???
+    case req @ POST -> Root / "change-password" =>
+      for {
+        passwordInfo <- req.as[NewPasswordInfo]
+        token         = req.headers.get(ci"Authorization")
+        result       <- authenticator.extractAndValidate(req).value
+        response <- result match
+          case None => NotFound(FailureResponse("User not found"))
+          case Some(user) =>
+            auth.changePassword(user.identity.email, passwordInfo).flatMap {
+              case Left(error) => BadRequest(FailureResponse(error))
+              case Right(user) => user.map(Ok(_)).getOrElse(BadRequest(FailureResponse("Error updating password")))
+            }
+      } yield response
   }
 
   // POST /auth/logout { Authorization: Bearer } => Ok

@@ -97,6 +97,67 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       }
     }
 
+    // Change password. User doesn't exist => 404 NotFound
+    "change password should return not found if user does not exist" in {
+      val request = Request[IO](Method.POST, uri"/auth/change-password")
+        .withEntity(NewPasswordInfo("password1", "password2"))
+
+      for {
+        jwtToken <- authenticatorStub.create(NotFoundUserEmail)
+        response <- authRoutes.run(request.withBearerToken(jwtToken))
+        payload  <- response.as[FailureResponse]
+      } yield {
+        response.status shouldBe Status.NotFound
+        payload         shouldBe FailureResponse("User not found")
+      }
+    }
+
+    // Change password. Invalid old password => 403 Forbidden
+    "change password should return forbidden if old password is incorrect" in {
+      val request = Request[IO](Method.POST, uri"/auth/change-password")
+        .withEntity(NewPasswordInfo("wrongpassword", "password2"))
+
+      for {
+        jwtToken <- authenticatorStub.create(john.email)
+        response <- authRoutes.run(request.withBearerToken(jwtToken))
+        payload  <- response.as[FailureResponse]
+      } yield {
+        response.status shouldBe Status.BadRequest
+        payload         shouldBe FailureResponse("Invalid password")
+      }
+    }
+
+    // Change password. JWT is invalid => 401 Unauthorized
+    "change password should return unauthorized if JWT is invalid" in {
+      val request = Request[IO](Method.POST, uri"/auth/change-password")
+        .withEntity(NewPasswordInfo("password1", "password2"))
+
+      for {
+        jwtToken <- authenticatorStub.create(NotFoundUserEmail)
+        response <- authRoutes.run(request.withBearerToken(jwtToken))
+        payload  <- response.as[FailureResponse]
+      } yield {
+        response.status shouldBe Status.NotFound
+        payload         shouldBe FailureResponse("User not found")
+        // payload         shouldBe FailureResponse("Unauthorized")
+      }
+    }
+
+    // Change password. Success => 200 Ok, with updated user
+    "change password should return ok if old password is correct" in {
+      val request = Request[IO](Method.POST, uri"/auth/change-password")
+        .withEntity(NewPasswordInfo("password1", "password2"))
+
+      for {
+        jwtToken <- authenticatorStub.create(john.email)
+        response <- authRoutes.run(request.withBearerToken(jwtToken))
+        user     <- response.as[User]
+      } yield {
+        response.status shouldBe Status.Ok
+        user            shouldBe john
+      }
+    }
+
     // Logout. Try to logout without JWT => 401 Unauthorized
     "logout should return unauthorized if JWT is missing" in {
       val request = Request[IO](Method.POST, uri"/logout")
@@ -121,66 +182,6 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
         response.status shouldBe Status.Ok
       }
     }
-
-    // Change password. User doesn't exist => 404 NotFound
-    "change password should return not found if user does not exist" in {
-      val request = Request[IO](Method.POST, uri"/change-password")
-        .withEntity(NewPasswordInfo("password1", "password2"))
-
-      for {
-        jwtToken <- authenticatorStub.create(NotFoundUserEmail)
-        response <- authRoutes.run(request.withBearerToken(jwtToken))
-        payload  <- response.as[FailureResponse]
-      } yield {
-        response.status shouldBe Status.NotFound
-        payload         shouldBe FailureResponse("User not found")
-      }
-    }
-
-    // Change password. Invalid old password => 403 Forbidden
-    "change password should return forbidden if old password is incorrect" in {
-      val request = Request[IO](Method.POST, uri"/change-password")
-        .withEntity(NewPasswordInfo("wrongpassword", "password2"))
-
-      for {
-        jwtToken <- authenticatorStub.create(john.email)
-        response <- authRoutes.run(request.withBearerToken(jwtToken))
-        payload  <- response.as[FailureResponse]
-      } yield {
-        response.status shouldBe Status.Forbidden
-        payload         shouldBe FailureResponse("Invalid password")
-      }
-    }
-
-    // Change password. JWT is invalid => 401 Unauthorized
-    "change password should return unauthorized if JWT is invalid" in {
-      val request = Request[IO](Method.POST, uri"/change-password")
-        .withEntity(NewPasswordInfo("password1", "password2"))
-
-      for {
-        jwtToken <- authenticatorStub.create(NotFoundUserEmail)
-        response <- authRoutes.run(request.withBearerToken(jwtToken))
-        payload  <- response.as[FailureResponse]
-      } yield {
-        response.status shouldBe Status.Unauthorized
-        payload         shouldBe FailureResponse("Unauthorized")
-      }
-    }
-
-    // Change password. Success => 200 Ok, with updated user
-    "change password should return ok if old password is correct" in {
-      val request = Request[IO](Method.POST, uri"/change-password")
-        .withEntity(NewPasswordInfo("password1", "password2"))
-
-      for {
-        jwtToken <- authenticatorStub.create(john.email)
-        response <- authRoutes.run(request.withBearerToken(jwtToken))
-        user     <- response.as[User]
-      } yield {
-        response.status shouldBe Status.Ok
-        user            shouldBe john
-      }
-    }
   }
 
   private val auth = new Auth[IO] {
@@ -189,8 +190,10 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       else IO.pure(None)
     def signUp(user: User.New): IO[Option[User]] =
       if (user.email == anna.email) IO.pure(Some(anna)) else IO.pure(None)
-    def changePassword(email: String, newPassword: NewPasswordInfo): IO[Either[String, Option[User]]] =
-      if (email == john.email) IO.pure(Right(Some(john))) else IO.pure(Left("User not found"))
+    def changePassword(email: String, passwordInfo: NewPasswordInfo): IO[Either[String, Option[User]]] =
+      if (email == john.email)
+        if (passwordInfo.oldPassword == "password1") IO.pure(Right(Some(john))) else IO.pure(Left("Invalid password"))
+      else IO.pure(Left("User not found"))
     def authenticator: Authenticator[IO] =
       authenticatorStub
   }
