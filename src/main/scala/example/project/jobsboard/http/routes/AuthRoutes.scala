@@ -5,7 +5,6 @@ import cats.syntax.all.toFlatMapOps
 import cats.syntax.all.toFunctorOps
 import cats.syntax.all.toSemigroupKOps
 import cats.syntax.all.catsSyntaxApplicativeId
-// import cats.Apply.ops.toAllApplyOps
 import io.circe.generic.auto.*
 import org.http4s.FormDataDecoder.formEntityDecoder
 import org.http4s.HttpRoutes
@@ -23,9 +22,17 @@ import org.typelevel.log4cats.Logger
 import org.http4s.Response
 import example.project.jobsboard.domain.User
 import example.project.jobsboard.domain.Auth.NewPasswordInfo
+import example.project.jobsboard.domain.Aliases.AuthRoute
+import tsec.authentication.asAuthed
+import tsec.authentication.SecuredRequestHandler
+import example.project.jobsboard.domain.Aliases.JwtToken
+import tsec.authentication.TSecAuthService
 
 class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4sDsl[F]:
   private val authenticator = auth.authenticator
+
+  private val securedRequestHandler: SecuredRequestHandler[F, String, User, JwtToken] =
+    SecuredRequestHandler(authenticator)
 
   // POST /auth/login json { login info } => 200 Ok with JWT as Authorization: Bearer header
   private val loginRoute: HttpRoutes[F] = HttpRoutes.of[F] {
@@ -54,34 +61,33 @@ class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4
   }
 
   // POST /auth/change-password json { new password info } { Authorization: Bearer } => Ok with updated user
-  private val changePasswordRoute: HttpRoutes[F] = HttpRoutes.of[F] {
-    case req @ POST -> Root / "change-password" =>
+  private val changePasswordRoute: AuthRoute[F] = { // HttpRoutes.of[F] {
+    case secured @ POST -> Root / "change-password" asAuthed user =>
       for {
-        passwordInfo <- req.as[NewPasswordInfo]
-        token         = req.headers.get(ci"Authorization")
-        result       <- authenticator.extractAndValidate(req).value
+        passwordInfo <- secured.request.as[NewPasswordInfo]
+        result       <- auth.changePassword(user.email, passwordInfo)
         response <- result match
-          case None => NotFound(FailureResponse("User not found")) // TODO: should be unauthorized
-          case Some(user) =>
-            auth.changePassword(user.identity.email, passwordInfo).flatMap {
-              case Left(error) => BadRequest(FailureResponse(error))
-              case Right(user) => user.map(Ok(_)).getOrElse(BadRequest(FailureResponse("Error updating password")))
-            }
+          case Right(Some(_)) => Ok()
+          case Right(None)    => NotFound(FailureResponse(s"User ${user.email} not found"))
+          case Left(_)        => Forbidden()
       } yield response
   }
 
   // POST /auth/logout { Authorization: Bearer } => Ok
-  private val logoutRoute: HttpRoutes[F] = HttpRoutes.of[F] {
-    case req @ POST -> Root / "logout" =>
+  private val logoutRoute: AuthRoute[F] = {
+    case secured @ POST -> Root / "logout" asAuthed _ =>
       for {
-        result <- authenticator.extractAndValidate(req).value
-        response <- result.fold(Response[F](Unauthorized).pure[F])(sec =>
-          authenticator.discard(sec.authenticator).flatMap(_ => Ok())
-        )
+        _        <- authenticator.discard(secured.authenticator)
+        response <- Ok()
       } yield response
   }
 
-  val routes: HttpRoutes[F] = Router[F]("/auth" -> (loginRoute <+> signupRoute <+> changePasswordRoute <+> logoutRoute))
+  val securedRoutes: HttpRoutes[F] =
+    securedRequestHandler.liftService(TSecAuthService(changePasswordRoute.orElse(logoutRoute)))
+
+  val nonSecuredRoutes: HttpRoutes[F] = loginRoute <+> signupRoute
+
+  val routes: HttpRoutes[F] = Router[F]("/auth" -> (nonSecuredRoutes <+> securedRoutes))
 
 object AuthRoutes:
   def make[F[_]: Concurrent: Logger](auth: Auth[F]): AuthRoutes[F] = new AuthRoutes[F](auth)
