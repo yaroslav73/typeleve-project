@@ -27,6 +27,7 @@ import tsec.authentication.asAuthed
 import tsec.authentication.SecuredRequestHandler
 import example.project.jobsboard.domain.Aliases.JwtToken
 import tsec.authentication.TSecAuthService
+import example.project.jobsboard.http.validations.validate
 
 class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4sDsl[F]:
   private val authenticator = auth.authenticator
@@ -37,17 +38,18 @@ class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4
   // POST /auth/login json { login info } => 200 Ok with JWT as Authorization: Bearer header
   private val loginRoute: HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / "login" =>
-      for {
-        loginInfo <- req.as[LoginInfo]
-        token     <- auth.login(loginInfo.email, loginInfo.password)
-        _         <- Logger[F].info(s"User ${loginInfo.email} logged in")
-        response = token.fold(
-          Response[F](
-            Unauthorized,
-            body = EntityEncoder[F, FailureResponse].toEntity(FailureResponse("User or password is incorrect")).body
-          )
-        )(token => authenticator.embed(Response[F](Ok), token))
-      } yield response
+      req.validate[LoginInfo] { loginInfo =>
+        for {
+          token <- auth.login(loginInfo.email, loginInfo.password)
+          _     <- Logger[F].info(s"User ${loginInfo.email} logged in")
+          response = token.fold(
+            Response[F](
+              Unauthorized,
+              body = EntityEncoder[F, FailureResponse].toEntity(FailureResponse("User or password is incorrect")).body
+            )
+          )(token => authenticator.embed(Response[F](Ok), token))
+        } yield response
+      }
   }
 
   // POST /auth/signup json { new user } => 201 Created with User
@@ -63,14 +65,15 @@ class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4
   // POST /auth/change-password json { new password info } { Authorization: Bearer } => Ok with updated user
   private val changePasswordRoute: AuthRoute[F] = { // HttpRoutes.of[F] {
     case secured @ POST -> Root / "change-password" asAuthed user =>
-      for {
-        passwordInfo <- secured.request.as[NewPasswordInfo]
-        result       <- auth.changePassword(user.email, passwordInfo)
-        response <- result match
-          case Right(Some(_)) => Ok()
-          case Right(None)    => NotFound(FailureResponse(s"User ${user.email} not found"))
-          case Left(_)        => Forbidden()
-      } yield response
+      secured.request.validate[NewPasswordInfo] { passwordInfo =>
+        for {
+          result <- auth.changePassword(user.email, passwordInfo)
+          response <- result match
+            case Right(Some(_)) => Ok()
+            case Right(None)    => NotFound(FailureResponse(s"User ${user.email} not found"))
+            case Left(_)        => Forbidden()
+        } yield response
+      }
   }
 
   // POST /auth/logout { Authorization: Bearer } => Ok
