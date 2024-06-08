@@ -69,9 +69,9 @@ class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4
         for {
           result <- auth.changePassword(user.email, passwordInfo)
           response <- result match
-            case Right(Some(_)) => Ok()
-            case Right(None)    => NotFound(FailureResponse(s"User ${user.email} not found"))
-            case Left(_)        => Forbidden()
+            case Right(Some(user)) => Ok(user)
+            case Right(None)       => NotFound(FailureResponse(s"User ${user.email} not found"))
+            case Left(error)       => Forbidden(FailureResponse(error))
         } yield response
       }
   }

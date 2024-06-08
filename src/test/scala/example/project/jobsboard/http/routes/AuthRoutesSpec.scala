@@ -71,7 +71,6 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       }
     }
 
-    // User created. Already exists => 400 BadRequest
     "signup should return bad request if user already exists" in {
       val request = Request[IO](Method.POST, uri"/auth/signup").withEntity(johnNewUser)
 
@@ -84,7 +83,6 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       }
     }
 
-    // User created. Success => 200 Ok
     "signup should return user if user created successfully" in {
       val request = Request[IO](Method.POST, uri"/auth/signup").withEntity(annaNewUser)
 
@@ -97,22 +95,20 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       }
     }
 
-    // Change password. User doesn't exist => 404 NotFound
     "change password should return not found if user does not exist" in {
       val request = Request[IO](Method.POST, uri"/auth/change-password")
         .withEntity(NewPasswordInfo("password1", "password2"))
 
       for {
-        jwtToken <- authenticatorStub.create(NotFoundUserEmail)
+        jwtToken <- authenticatorStub.create(anna.email)
         response <- authRoutes.run(request.withBearerToken(jwtToken))
         payload  <- response.as[FailureResponse]
       } yield {
         response.status shouldBe Status.NotFound
-        payload         shouldBe FailureResponse("User not found")
+        payload         shouldBe FailureResponse(s"User ${anna.email} not found")
       }
     }
 
-    // Change password. Invalid old password => 403 Forbidden
     "change password should return forbidden if old password is incorrect" in {
       val request = Request[IO](Method.POST, uri"/auth/change-password")
         .withEntity(NewPasswordInfo("wrongpassword", "password2"))
@@ -122,12 +118,11 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
         response <- authRoutes.run(request.withBearerToken(jwtToken))
         payload  <- response.as[FailureResponse]
       } yield {
-        response.status shouldBe Status.BadRequest
+        response.status shouldBe Status.Forbidden
         payload         shouldBe FailureResponse("Invalid password")
       }
     }
 
-    // Change password. JWT is invalid => 401 Unauthorized
     "change password should return unauthorized if JWT is invalid" in {
       val request = Request[IO](Method.POST, uri"/auth/change-password")
         .withEntity(NewPasswordInfo("password1", "password2"))
@@ -135,15 +130,11 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       for {
         jwtToken <- authenticatorStub.create(NotFoundUserEmail)
         response <- authRoutes.run(request.withBearerToken(jwtToken))
-        payload  <- response.as[FailureResponse]
       } yield {
-        response.status shouldBe Status.NotFound
-        payload         shouldBe FailureResponse("User not found")
-        // payload         shouldBe FailureResponse("Unauthorized")
+        response.status shouldBe Status.Unauthorized
       }
     }
 
-    // Change password. Success => 200 Ok, with updated user
     "change password should return ok if old password is correct" in {
       val request = Request[IO](Method.POST, uri"/auth/change-password")
         .withEntity(NewPasswordInfo("password1", "password2"))
@@ -158,7 +149,6 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       }
     }
 
-    // Logout. Try to logout without JWT => 401 Unauthorized
     "logout should return unauthorized if JWT is missing" in {
       val request = Request[IO](Method.POST, uri"/auth/logout")
 
@@ -169,7 +159,6 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       }
     }
 
-    // Logout. With valid JWT => 200 Ok
     "logout should return ok if JWT is valid" in {
       val request = Request[IO](Method.POST, uri"/auth/logout")
 
@@ -191,7 +180,7 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
     def changePassword(email: String, passwordInfo: NewPasswordInfo): IO[Either[String, Option[User]]] =
       if (email == john.email)
         if (passwordInfo.oldPassword == "password1") IO.pure(Right(Some(john))) else IO.pure(Left("Invalid password"))
-      else IO.pure(Left("User not found"))
+      else IO.pure(Right(None))
     def authenticator: Authenticator[IO] =
       authenticatorStub
   }
@@ -199,6 +188,7 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
   private val authenticatorStub: Authenticator[IO] = {
     // 1. Key for hashing
     val key = HMACSHA256.unsafeGenerateKey
+
     // 2. Indentity store to retrieve users
     val idStore: IdentityStore[IO, String, User] = (email: String) =>
       email match {
@@ -206,6 +196,7 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
         case anna.email => OptionT.pure(anna)
         case _          => OptionT.none[IO, User]
       }
+
     // 3. jwt authenticator
     JWTAuthenticator.unbacked.inBearerToken(
       1.day,
