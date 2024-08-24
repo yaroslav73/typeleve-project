@@ -16,6 +16,7 @@ import cats.effect.kernel.Sync
 trait Auth[F[_]]:
   def login(email: String, password: String): F[Option[JwtToken]]
   def signUp(user: User.New): F[Option[User]]
+  def delete(email: String): F[Boolean]
   def changePassword(email: String, newPassword: NewPasswordInfo): F[Either[String, Option[User]]]
   def authenticator: Authenticator[F]
 
@@ -40,6 +41,14 @@ object Auth:
               user           <- users.find(userId)
             } yield user
       } yield user
+
+    def delete(email: String): F[Boolean] =
+      for {
+        userOpt <- users.find(email)
+        result <- userOpt match
+          case Some(user) => users.delete(user.id)
+          case None       => false.pure[F]
+      } yield result
 
     def changePassword(email: String, passwordInfo: NewPasswordInfo): F[Either[String, Option[User]]] =
       for {

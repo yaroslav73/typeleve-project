@@ -5,6 +5,7 @@ import cats.syntax.all.toFlatMapOps
 import cats.syntax.all.toFunctorOps
 import cats.syntax.all.toSemigroupKOps
 import cats.syntax.all.catsSyntaxApplicativeId
+import cats.syntax.all.catsSyntaxSemigroup
 import io.circe.generic.auto.*
 import org.http4s.FormDataDecoder.formEntityDecoder
 import org.http4s.HttpRoutes
@@ -28,6 +29,9 @@ import tsec.authentication.SecuredRequestHandler
 import example.project.jobsboard.domain.Aliases.JwtToken
 import tsec.authentication.TSecAuthService
 import example.project.jobsboard.http.validations.validate
+import example.project.jobsboard.domain.Aliases.restrictedTo
+import example.project.jobsboard.domain.Aliases.adminOnly
+import example.project.jobsboard.domain.Aliases.allRoles
 
 class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4sDsl[F]:
   private val authenticator = auth.authenticator
@@ -85,8 +89,20 @@ class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends Http4
       } yield response
   }
 
-  val securedRoutes: HttpRoutes[F] =
-    securedRequestHandler.liftService(TSecAuthService(changePasswordRoute.orElse(logoutRoute)))
+  // DELETE /auth/users/email
+  private val deleteUserRoute: AuthRoute[F] = {
+    case secured @ DELETE -> Root / "users" / email asAuthed user =>
+      auth.delete(email).flatMap {
+        case true  => Ok()
+        case false => NotFound()
+      }
+  }
+
+  val securedRoutes: HttpRoutes[F] = securedRequestHandler.liftService(
+    changePasswordRoute.restrictedTo(allRoles) |+|
+      logoutRoute.restrictedTo(allRoles) |+|
+      deleteUserRoute.restrictedTo(adminOnly)
+  )
 
   val nonSecuredRoutes: HttpRoutes[F] = loginRoute <+> signupRoute
 

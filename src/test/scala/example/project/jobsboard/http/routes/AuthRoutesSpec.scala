@@ -169,6 +169,39 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
         response.status shouldBe Status.Ok
       }
     }
+
+    "delete user should return unauthorized if non-admin tries to delete a user" in {
+      val request = Request[IO](Method.DELETE, uri"/auth/users/john_test@email.com")
+
+      for {
+        jwtToken <- authenticatorStub.create(anna.email)
+        response <- authRoutes.run(request.withBearerToken(jwtToken))
+      } yield {
+        response.status shouldBe Status.Unauthorized
+      }
+    }
+
+    "delete user should be success if admin tries to delete a user" in {
+      val request = Request[IO](Method.DELETE, uri"/auth/users/anna_test@email.com")
+
+      for {
+        jwtToken <- authenticatorStub.create(john.email)
+        response <- authRoutes.run(request.withBearerToken(jwtToken))
+      } yield {
+        response.status shouldBe Status.Ok
+      }
+    }
+
+    "delete user should return Not Found if admin tries to delete not existing user" in {
+      val request = Request[IO](Method.DELETE, uri"/auth/users/non_exists@email.com")
+
+      for {
+        jwtToken <- authenticatorStub.create(john.email)
+        response <- authRoutes.run(request.withBearerToken(jwtToken))
+      } yield {
+        response.status shouldBe Status.NotFound
+      }
+    }
   }
 
   private val auth = new Auth[IO] {
@@ -177,6 +210,8 @@ class AuthRoutesSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with H
       else IO.pure(None)
     def signUp(user: User.New): IO[Option[User]] =
       if (user.email == anna.email) IO.pure(Some(anna)) else IO.pure(None)
+    def delete(email: String): IO[Boolean] =
+      if (email == anna.email) IO.pure(true) else IO.pure(false)
     def changePassword(email: String, passwordInfo: NewPasswordInfo): IO[Either[String, Option[User]]] =
       if (email == john.email)
         if (passwordInfo.oldPassword == "password1") IO.pure(Right(Some(john))) else IO.pure(Left("Invalid password"))
